@@ -16,6 +16,22 @@ describe('mapGhosttyToOrca — font & cursor', () => {
     expect(result.unsupportedKeys).toEqual([])
   })
 
+  // Ghostty treats a repeated `font-family` as a fallback chain: the first entry
+  // is the primary face and the rest are fallbacks. The generic "last occurrence
+  // wins" flattening in the mapper kept the last one, i.e. the least-preferred
+  // face. See #15985.
+  it('keeps the first font-family when the key is repeated', () => {
+    const result = mapGhosttyToOrca({ 'font-family': ['Menlo', 'Monaco'] })
+    expect(result.diff).toEqual({ terminalFontFamily: 'Menlo' })
+    expect(result.unsupportedKeys).toEqual([])
+  })
+
+  it('skips blank entries when picking the first font-family', () => {
+    const result = mapGhosttyToOrca({ 'font-family': ['   ', 'Fira Code', 'Monaco'] })
+    expect(result.diff).toEqual({ terminalFontFamily: 'Fira Code' })
+    expect(result.unsupportedKeys).toEqual([])
+  })
+
   it('skips invalid font-size values', () => {
     const result = mapGhosttyToOrca({ 'font-size': 'not-a-number' })
     expect(result.diff).toEqual({})

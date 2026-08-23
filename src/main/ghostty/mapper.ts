@@ -211,11 +211,17 @@ export function mapGhosttyToOrca(
       return { key: 'terminalCursorOpacity', value: num }
     },
 
-    'font-family': (v) => {
-      if (typeof v !== 'string' || v.trim().length === 0) {
+    // Why: Ghostty treats a repeated font-family as a fallback chain — the first
+    // entry is the primary face, the rest are fallbacks. The generic flattening
+    // above keeps the LAST occurrence, which is the right default for keys where
+    // a later line overrides an earlier one, but here it picks the least-preferred
+    // face. Read the unflattened value and take the first usable entry instead.
+    'font-family': (v, rawValue) => {
+      const first = Array.isArray(rawValue) ? rawValue.find((entry) => entry.trim().length > 0) : v
+      if (typeof first !== 'string' || first.trim().length === 0) {
         return null
       }
-      return { key: 'terminalFontFamily', value: v }
+      return { key: 'terminalFontFamily', value: first }
     },
 
     'font-size': (v) => {
