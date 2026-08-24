@@ -376,6 +376,13 @@ describe('AntigravityHookService', () => {
 
   // Why: the tokenizer above is load-bearing for the argv[0] tests, so pin its behaviour on the
   // exact escape the wrapper emits ('\\'' inside a single-quoted string) before relying on it.
+  // Why: a fixture that silently accepts malformed input would let a broken quoting change pass —
+  // real shlex raises on both of these, so this one must too (coderabbitai on #16222).
+  it('rejects incomplete shell syntax instead of guessing', () => {
+    expect(() => shlexSplit(`/bin/sh -c 'printf ok`)).toThrow(/unbalanced/)
+    expect(() => shlexSplit('/bin/sh -c foo\\')).toThrow(/trailing backslash/)
+  })
+
   it('tokenizes single-quote escapes the way a POSIX shlex does', () => {
     expect(shlexSplit(`/bin/sh -c 'printf '\\''%s'\\'' done'`)).toEqual([
       '/bin/sh',

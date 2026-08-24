@@ -1,7 +1,5 @@
-// Why: Zed's Antigravity ACP host runs hook commands with `shlex.split` + `create_subprocess_exec`,
-// so the installed string is tokenized and then exec'd directly — no shell. This mirrors that
-// tokenizer (POSIX mode: no expansion inside single quotes, backslash escapes outside them) so tests
-// can exercise the exec path instead of the `/bin/sh -c` path they would otherwise take.
+// Mirrors the ACP host's POSIX `shlex.split` so tests can exercise the exec path (#16087).
+// Throws on malformed input like shlex does, so a broken quoting change fails loudly here.
 export function shlexSplit(command: string): string[] {
   const tokens: string[] = []
   let current = ''
@@ -11,12 +9,13 @@ export function shlexSplit(command: string): string[] {
     const char = command[index]
     if (char === '\\' && quote !== "'") {
       const next = command[index + 1]
-      if (next !== undefined) {
-        current += next
-        started = true
-        index += 1
-        continue
+      if (next === undefined) {
+        throw new Error(`shlexSplit: trailing backslash with nothing to escape: ${command}`)
       }
+      current += next
+      started = true
+      index += 1
+      continue
     }
     if (quote === null && (char === '"' || char === "'")) {
       quote = char
@@ -38,14 +37,16 @@ export function shlexSplit(command: string): string[] {
     current += char
     started = true
   }
+  if (quote !== null) {
+    throw new Error(`shlexSplit: unbalanced ${quote} quote: ${command}`)
+  }
   if (started) {
     tokens.push(current)
   }
   return tokens
 }
 
-// Why: POSIX Antigravity commands are handed to `/bin/sh -c` so they stay exec-spawnable (#16087);
-// assertions about the shell snippet itself read the payload back out instead of matching its escaping.
+// Unwrap the `/bin/sh -c` payload so assertions match the snippet, not its escaping.
 export function posixHookInnerCommand(command: string): string {
   const argv = shlexSplit(command)
   return argv[0] === '/bin/sh' && argv[1] === '-c' && argv[2] !== undefined ? argv[2] : command
