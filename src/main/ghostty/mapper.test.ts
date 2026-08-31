@@ -32,6 +32,15 @@ describe('mapGhosttyToOrca — font & cursor', () => {
     expect(result.unsupportedKeys).toEqual([])
   })
 
+  it('takes the first font-family after a mid-list reset, not the cleared one', () => {
+    // Why: an empty entry resets the list, so only what follows it is still in
+    // effect. Searching the whole array would import `Fira Code`, which this
+    // config explicitly cleared before asking for Monaco.
+    const result = mapGhosttyToOrca({ 'font-family': ['Fira Code', '', 'Monaco'] })
+    expect(result.diff).toEqual({ terminalFontFamily: 'Monaco' })
+    expect(result.unsupportedKeys).toEqual([])
+  })
+
   it('treats a trailing blank font-family as a cleared list, not a missing value', () => {
     // Why: Ghostty documents an empty value on a repeatable key as resetting the list --
     // "specify the value as "" (empty string) to reset the list and then set the new

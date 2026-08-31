@@ -216,9 +216,20 @@ export function mapGhosttyToOrca(
     // above keeps the LAST occurrence, which is the right default for keys where
     // a later line overrides an earlier one, but here it picks the least-preferred
     // face. Read the unflattened value and take the first usable entry instead.
+    //
+    // An empty entry is not a blank to skip over: Ghostty documents it as
+    // resetting the list ("specify the value as \"\" to reset the list and then
+    // set the new values"), so only the entries after the LAST reset are still
+    // in effect. Searching the whole array would import a face the user cleared.
     'font-family': (v, rawValue) => {
-      const first = Array.isArray(rawValue) ? rawValue.find((entry) => entry.trim().length > 0) : v
-      if (typeof first !== 'string' || first.trim().length === 0) {
+      if (!Array.isArray(rawValue)) {
+        return typeof v === 'string' && v.trim().length > 0
+          ? { key: 'terminalFontFamily', value: v }
+          : null
+      }
+      const lastReset = rawValue.map((entry) => entry.trim().length === 0).lastIndexOf(true)
+      const first = rawValue.slice(lastReset + 1).find((entry) => entry.trim().length > 0)
+      if (typeof first !== 'string') {
         return null
       }
       return { key: 'terminalFontFamily', value: first }
