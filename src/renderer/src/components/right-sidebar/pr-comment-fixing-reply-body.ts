@@ -28,7 +28,11 @@ const ACK_SNIPPET_MAX_LENGTH = 72
  * credit) and cross-links unrelated issues. Inline code keeps the text readable and inert.
  */
 function neutralizePRCommentReferences(line: string): string {
-  return line.replace(/(^|[^\w`/])(@[a-zA-Z0-9][\w-]*|#\d+)/g, '$1`$2`')
+  // `#\d+` must not match the numeric head of a longer word: a hex colour such as
+  // `#123abc` would come back as `` `#123`abc ``. GitHub does not linkify `#123abc`
+  // either, so skipping it loses nothing. The boundary excludes only `\w` — `#123-foo`
+  // *is* linkified by GitHub, so that one still has to be neutralized.
+  return line.replace(/(^|[^\w`/])(@[a-zA-Z0-9][\w-]*|#\d+(?!\w))/g, '$1`$2`')
 }
 
 /** First readable line of a comment body, minus HTML comments and markdown markers. */
