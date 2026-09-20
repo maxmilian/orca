@@ -179,6 +179,18 @@ describe('buildPRCommentBatchConversationReplyBody', () => {
     expect(body).not.toMatch(/[^`]#123/)
   })
 
+  it('leaves tokens that are already inside an inline-code span untouched', () => {
+    const body = buildPRCommentBatchConversationReplyBody([
+      comment({ author: 'alice', body: 'See `text @greptileai` and `see #123` here' }),
+      comment({ author: 'bob', body: 'Off by one.', path: 'src/a.ts', line: 12 })
+    ])
+
+    // Why: the token is already inert. Wrapping it again inserts a backtick *inside*
+    // the existing span, which closes it early and pushes the token back out into
+    // plain text — GitHub then renders it as a live mention/issue link again.
+    expect(body).toContain('- @alice: comment — See `text @greptileai` and `see #123` here')
+  })
+
   it('leaves a numeric prefix inside a longer token alone', () => {
     const body = buildPRCommentBatchConversationReplyBody([
       comment({ author: 'alice', body: 'Use #123abc for the border, tracked in #123-followup' }),
