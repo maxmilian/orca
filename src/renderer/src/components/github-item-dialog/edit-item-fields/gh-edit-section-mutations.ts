@@ -296,10 +296,12 @@ export function runGHEditAssigneeToggle({
     onRevert: () => {
       // Why: leaving the guard set after a failed toggle suppresses assignee prop syncs indefinitely.
       editedAssigneesItemKeyRef.current = null
-      setLocalAssignees(prevAssignees)
-      patchProjectRowIfNeeded({ assignees: prevAssignees })
+      // Why: a newer owner (task-page mutation or quiet adopt) already holds every assignee
+      // surface, so rolling back only some of them would split the dialog from the Tasks row.
       if (authority?.revert()) {
+        setLocalAssignees(prevAssignees)
         patchWorkItem(itemId, { assignees: prevUsers }, itemRepoId, { sourceContext })
+        patchProjectRowIfNeeded({ assignees: prevAssignees })
       }
     },
     onSuccess: () => {
