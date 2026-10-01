@@ -161,7 +161,14 @@ export function beginTaskPageGitHubWorkItemMutation(
     if (!existing) {
       const ops = listPendingTaskPageGitHubOpsForItem(args.item.repoId, args.item.id, sourceScope)
       const snapshot = stripFamilyPendingFromList(args.item, built.family, ops)
-      setConfirmedListSnapshot(sourceScope, args.item.repoId, args.item.id, built.family, snapshot)
+      setConfirmedListSnapshot(
+        sourceScope,
+        args.item.repoId,
+        args.item.id,
+        built.family,
+        snapshot,
+        'seed'
+      )
     }
   }
 

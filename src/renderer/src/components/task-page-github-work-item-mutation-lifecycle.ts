@@ -10,6 +10,7 @@ import {
 } from './task-page-github-work-item-mutation-composition'
 import {
   deletePendingTaskPageGitHubOp,
+  deleteUnconfirmedListSnapshot,
   getConfirmedListSnapshot,
   getPendingTaskPageGitHubOp,
   getTaskPageGitHubMutationQueryKey,
@@ -226,6 +227,24 @@ export function rollbackTaskPageGitHubWorkItemMutation(args: {
       skipMeQualifiers,
       updateSticky: true
     })
+  }
+  if (listOp) {
+    // Why: mounted dialogs must see the recomposed rollback before the baseline is released.
+    notifyTaskPageGitHubMutationRegistry()
+    if (
+      !listPendingTaskPageGitHubOpsForItem(
+        args.key.repoId,
+        args.key.itemId,
+        args.key.sourceScope
+      ).some((op) => op.listOp?.family === listOp.family)
+    ) {
+      deleteUnconfirmedListSnapshot(
+        args.key.sourceScope,
+        args.key.repoId,
+        args.key.itemId,
+        listOp.family
+      )
+    }
   }
   notifyTaskPageGitHubMutationRegistry()
   return 'rolled_back'

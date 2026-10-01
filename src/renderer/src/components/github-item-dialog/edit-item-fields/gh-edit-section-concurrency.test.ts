@@ -19,7 +19,8 @@ import {
   beginTaskPageGitHubWorkItemMutation,
   confirmTaskPageGitHubWorkItemMutation,
   rollbackTaskPageGitHubWorkItemMutation,
-  materializeTaskPageItemList
+  materializeTaskPageItemList,
+  adoptQuietSearchFieldsForItem
 } from '@/components/task-page-github-work-item-mutations'
 import { runIssueUpdate } from '@/components/github/github-work-item-edit-mutations'
 import { runGHEditAssigneeToggle, type GHEditMutationRun } from './gh-edit-section-mutations'
@@ -161,6 +162,7 @@ function fixture(
     snapshotLogins,
     scheduled,
     cached,
+    patchWorkItem: store.getState().patchWorkItem,
     beginRow,
     confirmRow,
     rejectRow,
@@ -203,7 +205,7 @@ describe.each([
     expect(f.cached().assignees).toEqual([])
     expect(f.local()).toEqual([])
     expect(f.projectRow()).toEqual([])
-    expect(f.snapshotLogins()).toEqual([])
+    expect(f.snapshotLogins()).toBeUndefined()
   })
 
   it('control: reject dialog before starting row mutation leaves only successful bob', () => {
@@ -253,7 +255,7 @@ describe.each([
     const row = f.beginRow()
     f.scheduled.onRevert?.()
     f.rejectRow(row)
-    expect(f.snapshotLogins()).toEqual([])
+    expect(f.snapshotLogins()).toBeUndefined()
     expect.soft(f.cached().assignees).toEqual([])
     // The dialog callback retains still-pending Bob; the mounted subscription tracks its later failure.
     expect(f.local()).toEqual(['bob'])
@@ -310,6 +312,62 @@ describe.each([
       expect(f.cached().assignees?.map((user) => user.login)).toEqual(expected)
     }
   )
+
+  it('failed dialog addition releases authority for a later Bob search, with stale mounted props', () => {
+    const f = fixture(sourceContext)
+    const editedRef: { current: string | null } = { current: null }
+    const project: { assignees: string[] } = { assignees: [] }
+    const patchProjectRowIfNeeded = (patch: { assignees?: string[] }) => {
+      project.assignees = patch.assignees ?? project.assignees
+    }
+    const { result, rerender } = renderHook(
+      ({ item }) => {
+        const [assignees, setLocalAssignees] = useState<string[]>([])
+        useGHEditAssigneesAuthority({
+          item,
+          sourceContext,
+          assigneesItemKey: 'repo-1:issue:1',
+          editedAssigneesItemKeyRef: editedRef,
+          setLocalAssignees,
+          patchProjectRowIfNeeded
+        })
+        return assignees
+      },
+      { initialProps: { item: base } }
+    )
+    act(() => f.scheduled.onOptimistic?.())
+    rerender({ item: f.cached() })
+    expect(result.current).toEqual(['alice'])
+    act(() => f.scheduled.onRevert?.())
+    expect(result.current).toEqual([])
+    expect(project.assignees).toEqual([])
+    expect(f.cached().assignees).toEqual([])
+    expect(f.snapshotLogins()).toBeUndefined()
+    expect(editedRef.current).toBeNull()
+    rerender({ item: { ...base, assignees: [alice] } })
+    expect(result.current).toEqual([])
+    expect(project.assignees).toEqual([])
+    const serverItem = { ...base, assignees: [bob] }
+    act(() => {
+      adoptQuietSearchFieldsForItem({
+        item: f.cached(),
+        serverItem,
+        sourceScope: sourceContext ? getTaskSourceCacheScope(sourceContext) : null,
+        queryKey: 'q',
+        fetchStartedAtGeneration: 0,
+        sourceContext,
+        patchWorkItem: f.patchWorkItem
+      })
+    })
+    expect(f.cached().assignees).toEqual([bob])
+    expect(
+      materializeTaskPageItemList({
+        networkItems: [serverItem],
+        previousItems: [f.cached()],
+        queryKey: 'q'
+      })[0].assignees
+    ).toEqual([bob])
+  })
 
   it('removes both failed additions from mounted dialog and Project callbacks', () => {
     const f = fixture(sourceContext)

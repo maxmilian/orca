@@ -96,7 +96,7 @@ describe('runGHEditAssigneeToggle rollback', () => {
     expect(toggle.rowPatches).toEqual([{ assignees: ['me'] }, { assignees: [] }])
     expect(toggle.cachePatches).toEqual([['me'], []])
     expect(toggle.editedRef.current).toBeNull()
-    expect(getConfirmedListSnapshot(null, 'repo-1', 'issue:1', 'assignees')).toEqual([])
+    expect(getConfirmedListSnapshot(null, 'repo-1', 'issue:1', 'assignees')).toBeUndefined()
   })
 
   it('leaves local assignees and the Project row to the new owner when authority was taken over', () => {
