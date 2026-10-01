@@ -26,6 +26,7 @@ import {
   runGHEditStateChange
 } from './gh-edit-section-mutations'
 import { GHEditSectionTopColumns } from './gh-edit-section-top-columns'
+import { useGHEditAssigneesAuthority } from './gh-edit-section-assignee-mutation'
 import { GHEditSectionHorizontal } from './gh-edit-section-horizontal'
 import { useGitHubDuplicateIssueCandidates } from '@/components/github/github-duplicate-issue-candidates'
 
@@ -100,6 +101,15 @@ export function GHEditSection({
     },
     [projectOrigin, patchProjectRowContent]
   )
+
+  useGHEditAssigneesAuthority({
+    item,
+    sourceContext,
+    assigneesItemKey,
+    editedAssigneesItemKeyRef,
+    setLocalAssignees,
+    patchProjectRowIfNeeded
+  })
 
   // Why: with projectOrigin set, read labels/assignees from the row's repo, not the workspace path, or popovers list a different repo than writes target.
   const slugOwner = projectOrigin?.owner ?? null
@@ -279,6 +289,7 @@ export function GHEditSection({
   const handleAssigneeToggle = useCallback(
     (login: string) => {
       runGHEditAssigneeToggle({
+        item,
         login,
         localAssignees,
         knownAssignees: [...(item.assignees ?? []), ...repoAssignees.data],
@@ -298,10 +309,7 @@ export function GHEditSection({
       })
     },
     [
-      item.id,
-      item.number,
-      item.repoId,
-      item.assignees,
+      item,
       repoAssignees.data,
       assigneesItemKey,
       repoPath,

@@ -5,14 +5,11 @@ import {
   type TaskSourceContext
 } from '../../../shared/task-source-context'
 import {
-  deleteConfirmedListSnapshot,
   deleteLastConfirmedClientValue,
-  getConfirmedListSnapshot,
   getLastConfirmedClientValue,
   getTaskPageGitHubMutationQueryKey,
   markTaskPageGitHubFamiliesDirty,
   notifyTaskPageGitHubMutationRegistry,
-  setConfirmedListSnapshot,
   setLastConfirmedClientValue,
   taskPageGitHubItemKey
 } from './task-page-github-work-item-mutation-registry'
@@ -59,43 +56,6 @@ export function assertTaskPageGitHubDialogStateAuthority(args: {
         setLastConfirmedClientValue(sourceScope, args.repoId, args.itemId, 'state', previous)
       }
       markFamilyDirty(args.repoId, args.itemId, 'state')
-      notifyTaskPageGitHubMutationRegistry()
-      return true
-    }
-  }
-}
-
-/**
- * Same lag hold as state, for dialog assignee toggles: record the confirmed
- * assignee list as the `assignees` snapshot so a search-lagged Tasks refetch
- * keeps showing it; quiet adopt drops the snapshot once search matches.
- */
-export function assertTaskPageGitHubDialogAssigneesAuthority(args: {
-  repoId: string
-  itemId: string
-  assignees: readonly GitHubAssignableUser[]
-  sourceContext?: TaskSourceContext | null
-}): { revert: () => boolean } {
-  const sourceScope = dialogSourceScope(args.sourceContext)
-  const previous = getConfirmedListSnapshot(sourceScope, args.repoId, args.itemId, 'assignees')
-  setConfirmedListSnapshot(sourceScope, args.repoId, args.itemId, 'assignees', args.assignees)
-  const recorded = getConfirmedListSnapshot(sourceScope, args.repoId, args.itemId, 'assignees')
-  markFamilyDirty(args.repoId, args.itemId, 'assignees')
-  notifyTaskPageGitHubMutationRegistry()
-  return {
-    revert: () => {
-      // A matching search adopt or newer mutation owns the snapshot now.
-      if (
-        getConfirmedListSnapshot(sourceScope, args.repoId, args.itemId, 'assignees') !== recorded
-      ) {
-        return false
-      }
-      if (previous === undefined) {
-        deleteConfirmedListSnapshot(sourceScope, args.repoId, args.itemId, 'assignees')
-      } else {
-        setConfirmedListSnapshot(sourceScope, args.repoId, args.itemId, 'assignees', previous)
-      }
-      markFamilyDirty(args.repoId, args.itemId, 'assignees')
       notifyTaskPageGitHubMutationRegistry()
       return true
     }

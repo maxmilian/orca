@@ -45,6 +45,19 @@ function captureToggle(): {
   const editedRef: { current: string | null } = { current: null }
 
   runGHEditAssigneeToggle({
+    item: {
+      id: 'issue:1',
+      repoId: 'repo-1',
+      number: 1,
+      type: 'issue',
+      title: 'test',
+      state: 'open',
+      url: '',
+      labels: [],
+      updatedAt: '',
+      author: 'author',
+      assignees: []
+    },
     login: 'me',
     localAssignees: [],
     knownAssignees: [me, other],
@@ -83,7 +96,7 @@ describe('runGHEditAssigneeToggle rollback', () => {
     expect(toggle.rowPatches).toEqual([{ assignees: ['me'] }, { assignees: [] }])
     expect(toggle.cachePatches).toEqual([['me'], []])
     expect(toggle.editedRef.current).toBeNull()
-    expect(getConfirmedListSnapshot(null, 'repo-1', 'issue:1', 'assignees')).toBeUndefined()
+    expect(getConfirmedListSnapshot(null, 'repo-1', 'issue:1', 'assignees')).toEqual([])
   })
 
   it('leaves local assignees and the Project row to the new owner when authority was taken over', () => {
@@ -97,9 +110,9 @@ describe('runGHEditAssigneeToggle rollback', () => {
     setConfirmedListSnapshot(null, 'repo-1', 'issue:1', 'assignees', [me, other])
     toggle.options.onRevert()
 
-    expect(toggle.localAssignees).toEqual([['me']])
-    expect(toggle.rowPatches).toEqual([{ assignees: ['me'] }])
-    expect(toggle.cachePatches).toEqual([['me']])
+    expect(toggle.localAssignees).toEqual([['me'], ['me', 'other']])
+    expect(toggle.rowPatches).toEqual([{ assignees: ['me'] }, { assignees: ['me', 'other'] }])
+    expect(toggle.cachePatches).toEqual([['me'], ['me', 'other']])
     expect(toggle.editedRef.current).toBeNull()
     expect(getConfirmedListSnapshot(null, 'repo-1', 'issue:1', 'assignees')).toEqual([me, other])
   })
