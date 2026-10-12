@@ -6,7 +6,10 @@ import { ClaudeRuntimeAuthService } from '../claude-accounts/runtime-auth-servic
 import { ClaudeAccountService } from '../claude-accounts/service'
 import { KeybindingService } from '../keybindings/keybinding-service'
 import { createCodexSessionMigrationScheduler } from '../codex/codex-session-migration-scheduler'
-import { startCodexSessionBackfillInBackground } from '../codex/codex-session-backfill'
+import {
+  resolveCodexSessionBackfillPaths,
+  startCodexSessionBackfillInBackground
+} from '../codex/codex-session-backfill'
 import { startCodexSessionIndexHealInBackground } from '../codex/codex-session-index-heal'
 import { startCodexStateDbBackfillRecoveryInBackground } from '../codex/codex-state-db-backfill-recovery'
 import { startCodexSessionLogRetentionSweepInBackground } from '../codex/codex-session-log-retention'
@@ -61,7 +64,15 @@ export function initializeMainProcessAccountServices(): void {
   state.codexRuntimeHome = new CodexRuntimeHomeService(store)
   void startCodexStateDbBackfillRecoveryInBackground(getOrcaManagedCodexHomePath())
   // Why: rollout logs in the runtime home were never pruned and grew unbounded (#16776).
-  void startCodexSessionLogRetentionSweepInBackground(getOrcaManagedCodexHomePath())
+  // While the session migration is eligible, only prune rollouts it already published
+  // into the real Codex home; otherwise the sweep could delete their last copy.
+  void startCodexSessionLogRetentionSweepInBackground(
+    getOrcaManagedCodexHomePath(),
+    state.codexRuntimeHome.isHostSystemDefaultSessionMigrationEligible()
+      ? resolveCodexSessionBackfillPaths(resolveHostCodexSessionSourceHome(store.getSettings()))
+          .systemSessionsRoot
+      : undefined
+  )
   state.codexSessionMigration = createCodexSessionMigrationScheduler({
     isEligible: () =>
       state.codexRuntimeHome?.isHostSystemDefaultSessionMigrationEligible() === true,
