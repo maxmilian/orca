@@ -69,6 +69,19 @@ describe('programStatusHookYieldEndsAt', () => {
     }
   })
 
+  it('keeps a question the hooks raised from a stale working report unless the program worked since', () => {
+    for (const state of ['waiting', 'blocked'] as const) {
+      const hook = row({ state, agentType: 'pi' })
+      const working = report({ state: 'working', agentType: 'pi' })
+      expect(programStatusHookYieldEndsAt(hook, working)).toBe(Infinity)
+      expect(programStatusHookYieldEndsAt(hook, working, NOW - 1)).toBe(Infinity)
+      expect(programStatusHookYieldEndsAt(hook, working, NOW + 1)).toBeUndefined()
+      expect(programStatusHookYieldEndsAt(hook, report({ state: 'done', agentType: 'pi' }))).toBe(
+        NOW + SILENCE
+      )
+    }
+  })
+
   it('yields to a mid-turn hook row under another app id, not to a finished one', () => {
     expect(
       programStatusHookYieldEndsAt(
