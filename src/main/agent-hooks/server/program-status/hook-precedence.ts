@@ -28,15 +28,15 @@ export function programStatusHookYieldEndsAt(
       ? undefined
       : Infinity
   }
-  // An agent waiting on the user sends no hooks by design, so silence proves nothing there either; a
-  // `working` the program reported before the question (re-sent by the lease renewal) never ends it.
+  // A question sends no hooks while open, so a `working` that began before it (e.g. re-sent by the
+  // lease renewal) proves nothing; a working transition after it keeps the silence fallback.
   if (
     (previous.payload.state === 'waiting' || previous.payload.state === 'blocked') &&
-    payload.state === 'working'
+    payload.state === 'working' &&
+    programWorkingSince !== undefined &&
+    programWorkingSince <= previous.receivedAt
   ) {
-    return programWorkingSince !== undefined && programWorkingSince > previous.receivedAt
-      ? undefined
-      : Infinity
+    return Infinity
   }
   return previous.receivedAt + HOOK_SILENCE_BEFORE_PROGRAM_STATUS_FALLBACK_MS
 }

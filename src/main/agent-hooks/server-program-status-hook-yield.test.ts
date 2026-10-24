@@ -230,7 +230,7 @@ describe('OSC 7501 status beside hooks', () => {
       expect(paneRow()?.state).toBe('working')
     })
 
-    it('takes the row once the program works again after the question', async () => {
+    it('lets a working transition after the question take the row once hooks fall silent', async () => {
       piWorking()
       await piHook('agent_start')
       await piHook('ui_prompt_start')
@@ -239,6 +239,7 @@ describe('OSC 7501 status beside hooks', () => {
       programStatus({ state: 'done', agentType: 'pi' })
       vi.advanceTimersByTime(1_000)
       programStatus({ state: 'working', agentType: 'pi' })
+      vi.advanceTimersByTime(HOOK_SILENCE_BEFORE_PROGRAM_STATUS_FALLBACK_MS)
       expect(paneRow()?.state).toBe('working')
     })
   })
