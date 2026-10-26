@@ -68,9 +68,7 @@ export function initializeMainProcessAccountServices(): void {
   state.claudeRuntimeAuth = services.claudeRuntimeAuth
   state.claudeAccounts = services.claudeAccounts
   void startCodexStateDbBackfillRecoveryInBackground(getOrcaManagedCodexHomePath())
-  // Why: rollout logs in the runtime home were never pruned and grew unbounded (#16776).
-  // While the session migration is eligible, only prune rollouts it already published
-  // into the real Codex home; otherwise the sweep could delete their last copy.
+  // Why: prune unbounded rollout logs (#16776), but never a copy the migration hasn't published yet.
   void startCodexSessionLogRetentionSweepInBackground(
     getOrcaManagedCodexHomePath(),
     state.codexRuntimeHome.isHostSystemDefaultSessionMigrationEligible()

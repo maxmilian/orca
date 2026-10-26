@@ -5,19 +5,10 @@ import { getOrcaManagedCodexHomePath } from './codex-home-paths'
 const DAY_MS = 24 * 60 * 60 * 1000
 const ROLLOUT_FILE_PATTERN = /^rollout-.*\.jsonl$/
 
-/**
- * Why 90 days: the runtime home's rollout logs are never pruned today, so they
- * grow forever (#16776 reported 11 GB over ~a year). A quarter still covers the
- * window in which resuming or searching a past session is realistic, while
- * bounding the directory to a fraction of an unbounded lifetime.
- */
+// Why: unpruned rollout logs grew to 11 GB (#16776); a quarter still covers realistic resume/search.
 export const CODEX_SESSION_LOG_RETENTION_DAYS = 90
 
-/**
- * Why a floor: age alone would wipe every session of a user who returns after a
- * long break. Keeping the newest rollouts regardless of age means the sweep can
- * only ever remove history the user already has newer replacements for.
- */
+// Why: a user back from a long break keeps their newest sessions regardless of age.
 export const CODEX_SESSION_LOG_MIN_RETAINED_ROLLOUTS = 50
 
 const RETENTION_DAYS_ENV_VAR = 'ORCA_CODEX_SESSION_LOG_RETENTION_DAYS'
@@ -51,17 +42,7 @@ export function resolveCodexSessionLogRetentionDays(
   return parsed === 0 ? null : parsed
 }
 
-/**
- * Deletes expired `rollout-*.jsonl` logs under a Codex `sessions` root and
- * removes the date directories they leave empty.
- *
- * Never throws: a sweep that cannot read or unlink one entry still reclaims the
- * rest and reports the failure count.
- *
- * With `publishedSessionsRoot`, an expired rollout is only removed once the same
- * relative path exists there, so a rollout the session migration has not yet
- * published into the real Codex home is never deleted as the last copy.
- */
+/** Never throws; with `publishedSessionsRoot`, only rollouts already published there are removed. */
 export async function pruneExpiredCodexSessionLogs({
   sessionsRoot,
   now = Date.now(),
@@ -98,10 +79,7 @@ export async function pruneExpiredCodexSessionLogs({
       continue
     }
     try {
-      // Why: the mtime that made this rollout expired was sampled during the scan, and Codex can
-      // resume the session in the window before the unlink lands. Deleting it then removes a live
-      // conversation from discovery and sends every later append into an unlinked file, so re-read
-      // the mtime and leave anything that moved to the next sweep.
+      // Why: Codex may have resumed this session since the scan; deleting it would orphan a live log.
       const current = await stat(rollout.path)
       if (current.mtimeMs !== rollout.mtimeMs) {
         continue
@@ -119,10 +97,7 @@ export async function pruneExpiredCodexSessionLogs({
   return summary
 }
 
-/**
- * Runs the retention sweep for the managed runtime home without blocking the
- * caller; resolves to null when retention is opted out of.
- */
+/** Resolves to null when retention is opted out of. */
 export function startCodexSessionLogRetentionSweepInBackground(
   managedCodexHomePath: string = getOrcaManagedCodexHomePath(),
   publishedSessionsRoot?: string
@@ -162,10 +137,7 @@ async function collectRollouts(
   try {
     entries = await readdir(directoryPath, { withFileTypes: true })
   } catch (error) {
-    // An absent sessions root is the normal state before the first Codex run;
-    // any other errno is a real read failure and must be counted so the summary
-    // does not report a silently partial sweep as clean. ENOTDIR belongs on the
-    // failure side: the path exists, it is just not a directory.
+    // No sessions root before the first Codex run is normal; anything else (incl. ENOTDIR) is a failure.
     if (!isDirectoryAbsence(error)) {
       summary.failures += 1
     }
