@@ -20,7 +20,7 @@ vi.mock('node:fs/promises', async () => {
       }
       resumed.statCalls += 1
       if (resumed.statCalls === 2) {
-        const now = new Date()
+        const now = new Date(NOW)
         await actual.utimes(path, now, now)
       }
       return actual.stat(path)
